@@ -8,8 +8,8 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 
 def check_compat(*, enable: bool = True) -> Callable[[F], F]:
-    """Decorator used by stronghold to toggle API compatibility checks.
-
+    """ Example Implementation of a decorator that can be used in client code
+    Decorator used by stronghold to toggle API compatibility checks.
     When ``enable`` is ``False`` the decorated function will be skipped by the
     backward compatibility linter.
     """
@@ -19,4 +19,3 @@ def check_compat(*, enable: bool = True) -> Callable[[F], F]:
         return func
 
     return decorator
-

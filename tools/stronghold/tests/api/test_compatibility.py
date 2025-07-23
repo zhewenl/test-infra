@@ -6,7 +6,7 @@ import api.compatibility
 import api.violations
 import pytest
 from testing import git, source
-import bc_linter
+import tests.bc_linter_example as bc_linter
 
 
 def test_deleted_function(tmp_path: pathlib.Path) -> None:
