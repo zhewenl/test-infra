@@ -2,6 +2,7 @@
 
 import pathlib
 
+import dataclasses
 import api
 import api.ast
 import api.types
@@ -258,5 +259,34 @@ def test_extract_comprehensive(tmp_path: pathlib.Path) -> None:
             variadic_args=True,
             variadic_kwargs=True,
             line=2,
+        )
+    }
+
+
+def test_extract_dataclass(tmp_path: pathlib.Path) -> None:
+    @dataclasses.dataclass
+    class Class:
+        a: int
+        b: int = 1
+
+    classes = api.ast.extract_classes(source.make_file(tmp_path, Class))
+    assert classes == {
+        "Class": api.Class(
+            fields=[
+                api.Field(
+                    name="a",
+                    required=True,
+                    line=3,
+                    type_annotation=api.types.TypeName("int"),
+                ),
+                api.Field(
+                    name="b",
+                    required=False,
+                    line=4,
+                    type_annotation=api.types.TypeName("int"),
+                ),
+            ],
+            line=2,
+            dataclass=True,
         )
     }

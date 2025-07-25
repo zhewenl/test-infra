@@ -123,3 +123,40 @@ class ParameterTypeChanged(ParameterViolation):
         self.message = (
             f"{self.parameter} changed from {self.type_before} to {self.type_after}"
         )
+
+
+# ====================================
+# Dataclass and class field violations
+@dataclass
+class FieldViolation(Violation):
+    parameter: str = ""
+
+
+@dataclass
+class FieldRemoved(FieldViolation):
+    message: str = ""
+
+    def __post_init__(self) -> None:
+        self.message = f"{self.parameter} was removed"
+
+
+@dataclass
+class FieldAdded(FieldViolation):
+    message: str = ""
+
+    def __post_init__(self) -> None:
+        self.message = f"{self.parameter} was added"
+
+
+@dataclass
+class FieldTypeChanged(FieldViolation):
+    """Represents when a dataclass field type has changed in a non-compatible way."""
+
+    type_before: str = ""
+    type_after: str = ""
+    message: str = ""
+
+    def __post_init__(self) -> None:
+        self.message = (
+            f"{self.parameter} changed from {self.type_before} to {self.type_after}"
+        )

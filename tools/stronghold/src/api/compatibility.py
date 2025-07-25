@@ -70,6 +70,8 @@ def check(
     """Identifies API compatibility issues between two files."""
     before_api = api.ast.extract(before)
     after_api = api.ast.extract(after)
+    before_classes = api.ast.extract_classes(before)
+    after_classes = api.ast.extract_classes(after)
 
     violations: list[api.violations.Violation] = []
     for name, before_def in before_api.items():
@@ -102,6 +104,14 @@ def check(
         violations += _check_by_position(name, before_def, after_def)
         violations += _check_by_requiredness(name, before_def, after_def)
         violations += _check_variadic_parameters(name, before_def, after_def)
+
+    for name, before_class in before_classes.items():
+        if any(token.startswith("_") for token in name.split(".")):
+            continue
+        after_class = after_classes.get(name)
+        if after_class is None:
+            continue
+        violations += list(_check_class_fields(name, before_class, after_class))
 
     return violations
 
@@ -248,6 +258,40 @@ def _check_variadic_parameters(
         yield api.violations.VarArgsDeleted(func=func, line=after.line)
     if before.variadic_kwargs and not after.variadic_kwargs:
         yield api.violations.KwArgsDeleted(func, line=after.line)
+
+
+def _check_class_fields(
+    cls: str, before: api.Class, after: api.Class
+) -> Iterable[api.violations.Violation]:
+    """Checks class and dataclass field compatibility."""
+
+    before_fields = {f.name: f for f in before.fields}
+    after_fields = {f.name: f for f in after.fields}
+
+    for name, before_field in before_fields.items():
+        after_field = after_fields.get(name)
+        if after_field is None:
+            yield api.violations.FieldRemoved(
+                func=cls, parameter=name, line=after.line
+            )
+            continue
+        if before.dataclass and after.dataclass:
+            if not _check_type_compatibility(
+                before_field.type_annotation, after_field.type_annotation
+            ):
+                yield api.violations.FieldTypeChanged(
+                    func=cls,
+                    parameter=name,
+                    line=after_field.line,
+                    type_before=str(before_field.type_annotation),
+                    type_after=str(after_field.type_annotation),
+                )
+
+    for name in set(after_fields) - set(before_fields):
+        yield api.violations.FieldAdded(
+            func=cls, parameter=name, line=after_fields[name].line
+        )
+
 
 
 def _check_type_compatibility(

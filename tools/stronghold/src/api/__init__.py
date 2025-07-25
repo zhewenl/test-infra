@@ -41,3 +41,22 @@ class Parameter:
     line: int
     # Type annotation (relies on ast.annotation types)
     type_annotation: Optional[api.types.TypeHint] = None
+
+
+@dataclasses.dataclass
+class Field:
+    """Represents a dataclass or class attribute."""
+
+    name: str
+    required: bool
+    line: int
+    type_annotation: Optional[api.types.TypeHint] = None
+
+
+@dataclasses.dataclass
+class Class:
+    """Represents a class or dataclass."""
+
+    fields: Sequence[Field]
+    line: int
+    dataclass: bool = False

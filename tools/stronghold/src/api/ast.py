@@ -26,6 +26,57 @@ def extract(path: pathlib.Path) -> Mapping[str, api.Parameters]:
     }
 
 
+def extract_classes(path: pathlib.Path) -> Mapping[str, api.Class]:
+    """Extracts class and dataclass definitions."""
+
+    out: dict[str, api.Class] = {}
+
+    class _ClassVisitor(ast.NodeVisitor):
+        def __init__(self, context: Sequence[str]) -> None:
+            self._context = list(context)
+
+        def visit_ClassDef(self, node: ast.ClassDef) -> None:
+            name = ".".join(self._context + [node.name])
+            is_dataclass = any(
+                isinstance(dec, ast.Name) and dec.id == "dataclass"
+                or isinstance(dec, ast.Attribute) and dec.attr == "dataclass"
+                for dec in node.decorator_list
+            )
+            fields: list[api.Field] = []
+            for stmt in node.body:
+                if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
+                    field_name = stmt.target.id
+                    if field_name.startswith("_"):
+                        continue
+                    fields.append(
+                        api.Field(
+                            name=field_name,
+                            required=stmt.value is None,
+                            line=stmt.lineno,
+                            type_annotation=api.types.annotation_to_dataclass(stmt.annotation),
+                        )
+                    )
+                elif isinstance(stmt, ast.Assign):
+                    for target in stmt.targets:
+                        if isinstance(target, ast.Name):
+                            field_name = target.id
+                            if field_name.startswith("_"):
+                                continue
+                            fields.append(
+                                api.Field(
+                                    name=field_name,
+                                    required=False,
+                                    line=stmt.lineno,
+                                    type_annotation=None,
+                                )
+                            )
+            out[name] = api.Class(fields=fields, line=node.lineno, dataclass=is_dataclass)
+            _ClassVisitor(self._context + [node.name]).generic_visit(node)
+
+    _ClassVisitor([]).visit(ast.parse(path.read_text(), os.fspath(path)))
+    return out
+
+
 def extract_raw(path: pathlib.Path) -> Mapping[str, ast.FunctionDef]:
     """Extracts the API as ast.FunctionDef instances."""
     out: dict[str, ast.FunctionDef] = {}
